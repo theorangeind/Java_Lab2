@@ -1,3 +1,5 @@
+import java.io.*;
+import java.nio.file.FileStore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -5,71 +7,127 @@ import java.util.Scanner;
 
 public class Main
 {
-    /*
-    10. Создать класс равносторонний треугольник, член класса – длина стороны. Предусмотреть в
-    классе методы вычисления и вывода сведений о фигуре – периметр, площадь. Создать производный
-    класс – правильная треугольная призма с высотой H, добавить в класс метод определения объема
-    фигуры, перегрузить методы расчета площади и вывода сведений о фигуре. Написать программу,
-    демонстрирующую работу с классом: дано N треугольников и M призм. Найти количество треугольников,
-    у которых площадь меньше средней площади треугольников, и призму с наибольшим объемом.
-    */
-
     private static int M, N;
-    private static List<TriangleEquilateral> listN = new ArrayList<>();
-    private static List<TrianglePrismEquilateral> listM = new ArrayList<>();
     private static Random random = new Random();
+    private static FigureStorage storage = new FigureStorage();
+
+    public static final String MAIN_FILE_NAME = "last_save.lab";
+    public static final String FILES_EXTENSION = ".lab";
 
     public static void main(String[] args)
     {
-        System.out.println("Enter N value");
-        N = readInteger();
-        System.out.println("Enter M value");
-        M = readInteger();
+        //search for existing files
+        System.out.println("Available files:");
+        File[] saves = FigureStorage.getSavesList(".", FILES_EXTENSION);
+        int counter = 0;
+        for (File f : saves)
+        {
+            ++counter;
+            System.out.println(counter + ". " + f.getName());
+        }
 
-        //triangles creating and processing
-        System.out.println("Processing the Triangles...");
-        float averageSquare = 0;
-        for(int i = 0; i < N; i++)
-        {
-            TriangleEquilateral tr = getRandomTriangle();
-            System.out.println(i + 1 + ".\n" + tr.getInfo() + "\n");
-            averageSquare += tr.getSquare();
-            listN.add(tr);
-        }
-        averageSquare /= N;
-        System.out.print("Average square equals " + averageSquare + "\nThe amount of Triangles with lower square values equals ");
-        int lowerSquareValuesCount = 0;
-        for (TriangleEquilateral tr : listN)
-        {
-            if(tr.getSquare() < averageSquare) lowerSquareValuesCount++;
-        }
-        System.out.println(lowerSquareValuesCount + "\n");
+        //do last save backup
+        storage.doFileBackup(MAIN_FILE_NAME);
 
-        //prisms creating and processing
-        System.out.println("Processing the Prisms...");
-        float maxVolume = 0;
-        TrianglePrismEquilateral maxVolumePrism = null;
-        for(int i = 0; i < N; i++)
+        boolean flag = counter > 0;
+        if(!flag)
         {
-            TrianglePrismEquilateral pr = getRandomPrism();
-            System.out.println(i + 1 + ".\n" + pr.getInfo() + "\n");
-            if(pr.getVolume() > maxVolume) maxVolumePrism = pr;
-            listM.add(pr);
+            flag = true;
+            System.out.println("No suitable files found\n");
         }
-        System.out.println("The prism with largest volume is:\n" + maxVolumePrism.getInfo());
+        else
+        {
+            System.out.println("\nEnter a number of file to load. Enter '0' to skip.");
+            int f = readInteger(0, counter);
+            if (f != 0)
+            {
+                //load file
+                storage.load(saves[f - 1].getName());
+                flag = false;
+            }
+            else flag = true;
+        }
+
+        if(flag)
+        {
+            //handle user input
+            System.out.println("Enter N value");
+            N = readInteger();
+            System.out.println("Enter M value");
+            M = readInteger();
+
+            //fill storage with figures
+            storage.fillListRandomly(TriangleEquilateral.class, N);
+            storage.fillListRandomly(TrianglePrismEquilateral.class, M);
+        }
+
+        //print figures info
+        System.out.println("Triangles list:");
+        storage.printList(TriangleEquilateral.class);
+        System.out.println("Prisms list:");
+        storage.printList(TrianglePrismEquilateral.class);
+
+        //do tasks
+        doTask(TriangleEquilateral.class);
+        doTask(TrianglePrismEquilateral.class);
+
+        //save data to file
+        storage.save(MAIN_FILE_NAME);
+        System.out.println("Data saved to file '" + MAIN_FILE_NAME + "'");
     }
 
-    public static TriangleEquilateral getRandomTriangle()
+    public static void doTask(Class<?> figureClass)
     {
-        return new TriangleEquilateral((float)random.nextInt(20) + 1);
-    }
+        if(figureClass == TriangleEquilateral.class)
+        {
+            System.out.println("Processing the Triangles...");
+            List<TriangleEquilateral> list = storage.getFigureList(figureClass);
+            if(list != null)
+            {
+                float averageSquare = 0;
+                for (TriangleEquilateral tr : list)
+                {
+                    averageSquare += tr.getSquare();
+                }
+                averageSquare /= list.size();
+                System.out.println("Average square equals " + averageSquare);
 
-    public static TrianglePrismEquilateral getRandomPrism()
-    {
-        return new TrianglePrismEquilateral((float)random.nextInt(20) + 1, (float)random.nextInt(20) + 1);
+                int lowerSquareValuesCount = 0;
+                for (TriangleEquilateral tr : list)
+                {
+                    if (tr.getSquare() < averageSquare) lowerSquareValuesCount++;
+                }
+                System.out.println("The amount of Triangles with lower square values equals " + lowerSquareValuesCount + "\n");
+            }
+        }
+        else if(figureClass == TrianglePrismEquilateral.class)
+        {
+            System.out.println("Processing the Prisms...");
+            List<TrianglePrismEquilateral> list = storage.getFigureList(figureClass);
+            if(list != null)
+            {
+                float maxVolume = 0;
+                TrianglePrismEquilateral maxVolumePrism = null;
+                for(TrianglePrismEquilateral pr : list)
+                {
+                    if (pr.getVolume() > maxVolume) maxVolumePrism = pr;
+                }
+                if(maxVolumePrism != null) System.out.println("The prism with largest volume is:\n" + maxVolumePrism.getInfo());
+                else System.out.println("An error occured");
+            }
+        }
+        else
+        {
+            System.out.println("Error! No task for class <" + figureClass.toString() + ">");
+        }
     }
 
     public static int readInteger()
+    {
+        return readInteger(1, 9999);
+    }
+
+    public static int readInteger(int minValue, int maxValue)
     {
         Scanner input = new Scanner(System.in);
         while(true)
@@ -77,10 +135,17 @@ public class Main
             try
             {
                 int result = Integer.parseInt(input.next());
-                if(result > 0) return result;
+                if(result >= minValue)
+                {
+                    if(result <= maxValue) return result;
+                    else
+                    {
+                        System.out.println("Value must be less than " + (maxValue + 1));
+                    }
+                }
                 else
                 {
-                    System.out.println("Value must be > 0");
+                    System.out.println("Value must be greater than " + (minValue - 1));
                 }
             }
             catch (Exception e)
