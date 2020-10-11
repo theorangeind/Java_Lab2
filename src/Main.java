@@ -11,13 +11,17 @@ public class Main
     private static Random random = new Random();
     private static FigureStorage storage = new FigureStorage();
 
-    public static final String MAIN_FILE_NAME = "last_save.lab";
+    public static final String MAIN_FILE_NAME = "s_last_save.lab";
     public static final String FILES_EXTENSION = ".lab";
 
     public static void main(String[] args)
     {
+        //do last save backup
+        storage.doFileBackup(MAIN_FILE_NAME);
+        System.out.println();
+
         //search for existing files
-        System.out.println("Available files:");
+        System.out.println("Available files to load:");
         File[] saves = FigureStorage.getSavesList(".", FILES_EXTENSION);
         int counter = 0;
         for (File f : saves)
@@ -25,9 +29,6 @@ public class Main
             ++counter;
             System.out.println(counter + ". " + f.getName());
         }
-
-        //do last save backup
-        storage.doFileBackup(MAIN_FILE_NAME);
 
         boolean flag = counter > 0;
         if(!flag)
@@ -42,10 +43,14 @@ public class Main
             if (f != 0)
             {
                 //load file
-                storage.load(saves[f - 1].getName());
+                storage.deserialize(saves[f - 1].getName());
                 flag = false;
             }
-            else flag = true;
+            else
+            {
+                System.out.println("File loading skipped.");
+                flag = true;
+            }
         }
 
         if(flag)
@@ -57,6 +62,7 @@ public class Main
             M = readInteger();
 
             //fill storage with figures
+            System.out.println("Filling lists with figures...");
             storage.fillListRandomly(TriangleEquilateral.class, N);
             storage.fillListRandomly(TrianglePrismEquilateral.class, M);
         }
@@ -72,8 +78,17 @@ public class Main
         doTask(TrianglePrismEquilateral.class);
 
         //save data to file
-        storage.save(MAIN_FILE_NAME);
+        //storage.save(MAIN_FILE_NAME);
+        if(flag) storage.serialize(MAIN_FILE_NAME);
         System.out.println("Data saved to file '" + MAIN_FILE_NAME + "'");
+
+        System.out.println("\nJSON serialization:");
+        storage.serializeFastJSON("json-" +MAIN_FILE_NAME);
+        storage.deserializeFastJSON("json-" +MAIN_FILE_NAME);
+        System.out.println("Triangles list:");
+        storage.printList(TriangleEquilateral.class);
+        System.out.println("Prisms list:");
+        storage.printList(TrianglePrismEquilateral.class);
     }
 
     public static void doTask(Class<?> figureClass)

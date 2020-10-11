@@ -1,6 +1,8 @@
 import lombok.Getter;
 
-public class TrianglePrismEquilateral extends TriangleEquilateral implements IFigure
+import java.io.Serializable;
+
+public class TrianglePrismEquilateral extends TriangleEquilateral implements IFigure, Serializable
 {
     @Getter
     protected final float height;

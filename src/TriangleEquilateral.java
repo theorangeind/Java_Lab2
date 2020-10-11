@@ -1,6 +1,8 @@
 import lombok.Getter;
 
-public class TriangleEquilateral implements IFigure
+import java.io.Serializable;
+
+public class TriangleEquilateral implements IFigure, Serializable
 {
     @Getter
     protected final float sideLength;

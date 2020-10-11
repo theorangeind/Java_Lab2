@@ -1,3 +1,6 @@
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
+
 import java.io.*;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -94,70 +97,84 @@ public class FigureStorage
         return new TrianglePrismEquilateral((float)random.nextInt(20) + 1, (float)random.nextInt(20) + 1);
     }
 
-    public void save(String fileName)
+    public void serialize(String fileName)
     {
-        try(BufferedWriter out = new BufferedWriter(new FileWriter(fileName)))
+        try
         {
-            if (listN != null)
-            {
-                for (TriangleEquilateral tr : listN)
-                {
-                    out.write(String.valueOf(tr.sideLength));
-                    out.newLine();
-                }
-                out.write(";");
-                out.newLine();
-            }
-            if(listM != null)
-            {
-                for (TrianglePrismEquilateral pr : listM)
-                {
-                    out.write(String.valueOf(pr.sideLength));
-                    out.newLine();
-                    out.write(String.valueOf(pr.height));
-                    out.newLine();
-                }
-                out.write(";");
-                out.newLine();
-            }
+            FileOutputStream fos = new FileOutputStream(fileName);
+            ObjectOutputStream out = new ObjectOutputStream(fos);
+
+            out.writeObject(listN);
+            out.writeChars(";");
+            out.writeObject(listM);
+
+            out.close();
+            fos.close();
         }
-        catch (Exception e)
+        catch(IOException e)
         {
             e.printStackTrace();
         }
     }
 
-    public void load(String fileName)
+    public void deserialize(String fileName)
     {
-        this.clear();
-
-        try(Scanner scanner = new Scanner(new FileReader(fileName)))
+        try
         {
-            while(scanner.hasNextLine())
+            FileInputStream fis = new FileInputStream(fileName);
+            ObjectInputStream input = new ObjectInputStream(fis);
+
+            this.listN = (ArrayList<TriangleEquilateral>)input.readObject();
+            input.readChar();
+            this.listM = (ArrayList<TrianglePrismEquilateral>)input.readObject();
+
+            input.close();
+            fis.close();
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+        }
+        catch(ClassNotFoundException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void serializeFastJSON(String fileName)
+    {
+        try
+        {
+            FileWriter fw = new FileWriter(fileName);
+            BufferedWriter bw = new BufferedWriter(fw);
+            bw.write(JSON.toJSONString(this.listN) + "\n");
+            bw.write(JSON.toJSONString(this.listM));
+            bw.close();
+            fw.close();
+        }
+        catch(IOException e)
+        {
+            e.printStackTrace();
+        }
+    }
+
+    public void deserializeFastJSON(String fileName)
+    {
+        try
+        {
+            Scanner scanner = new Scanner(new FileReader(fileName));
+            this.clear();
+            ArrayList<JSONObject> JSONlist = JSON.parseObject(scanner.nextLine(), ArrayList.class);
+            for (JSONObject obj : JSONlist)
             {
-                try
-                {
-                    float f = Float.parseFloat(scanner.nextLine());
-                    listN.add(new TriangleEquilateral(f));
-                }
-                catch (NumberFormatException e)
-                {
-                    break;
-                }
+                this.listN.add(new TriangleEquilateral(obj.getIntValue("sideLength")));
             }
-            while(scanner.hasNextLine())
+            JSONlist = JSON.parseObject(scanner.nextLine(), ArrayList.class);
+            for (JSONObject obj : JSONlist)
             {
-                try
-                {
-                    float s = Float.parseFloat(scanner.nextLine());
-                    float h = Float.parseFloat(scanner.nextLine());
-                    listM.add(new TrianglePrismEquilateral(s, h));
-                }
-                catch (NumberFormatException e)
-                {
-                    break;
-                }
+                this.listM.add(new TrianglePrismEquilateral(obj.getIntValue("sideLength"), obj.getIntValue("height")));
             }
+            scanner.close();
         }
         catch(IOException e)
         {
@@ -177,9 +194,10 @@ public class FigureStorage
         backupName += new SimpleDateFormat("dd.MM.yyyy-HH.mm.ss").format(new Date());
         backupName += Main.FILES_EXTENSION;
 
-        load(mainFileName);
-        save(backupName);
-        clear();
+        deserialize(mainFileName);
+        serialize(backupName);
+        System.out.println("Created last save backup file '" + backupName + "'");
+        this.clear();
     }
 
     public static File[] getSavesList(String directory, String extension)
